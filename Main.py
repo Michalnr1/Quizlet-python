@@ -94,6 +94,10 @@ class WordListEditor(QDialog):
         self.edit_word_button.clicked.connect(self.edit_selected_word)
         self.layout.addWidget(self.edit_word_button)
 
+        self.delete_word_button = QPushButton("Delete Word")
+        self.delete_word_button.clicked.connect(self.delete_word)
+        self.layout.addWidget(self.delete_word_button)
+
         self.start_learning_button = QPushButton("Start Learning Mode")
         self.start_learning_button.clicked.connect(self.start_learning_mode)
         self.layout.addWidget(self.start_learning_button)
@@ -137,6 +141,13 @@ class WordListEditor(QDialog):
             selected_item.setText(1, selected_word.term)
             selected_item.setText(2, selected_word.definition)
             selected_item.setText(3, selected_word.notes)
+
+    def delete_word(self):
+        selected_item = self.tree.currentItem()
+        if selected_item:
+            selected_index = self.tree.indexOfTopLevelItem(selected_item)
+            del self.word_list.words[selected_index]
+            self.populate_tree()
 
     def start_learning_mode(self):
         selected_words = [word for word in self.word_list.words if word.selected]
@@ -215,6 +226,10 @@ class Quizlet(QMainWindow):
         self.edit_list_button.clicked.connect(self.edit_list_title)
         layout.addWidget(self.edit_list_button)
 
+        self.delete_list_button = QPushButton("Delete List")
+        self.delete_list_button.clicked.connect(self.delete_list)
+        layout.addWidget(self.delete_list_button)
+
         self.open_list_button = QPushButton("Open List")
         self.open_list_button.clicked.connect(self.open_list)
         layout.addWidget(self.open_list_button)
@@ -242,6 +257,13 @@ class Quizlet(QMainWindow):
             dialog = EditWordListDialog(selected_list, selected_item)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.populate_tree()
+
+    def delete_list(self):
+        selected_item = self.tree.currentItem()
+        if selected_item:
+            selected_index = self.tree.indexOfTopLevelItem(selected_item)
+            del self.word_lists[selected_index]
+            self.populate_tree()
 
     def open_list(self):
         selected_item = self.tree.currentItem()
