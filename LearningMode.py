@@ -12,6 +12,8 @@ class LearningMode(QDialog):
         self.words = words.copy()
         self.current_word_index = -1
         self.correct_answer = ""
+        self.correct_answers = 0
+        self.total_questions = 0
 
         self.layout = QVBoxLayout()
 
@@ -26,6 +28,13 @@ class LearningMode(QDialog):
         self.layout.addWidget(self.check_button)
 
         self.setLayout(self.layout)
+        self.new_session()
+
+    def new_session(self):
+        self.correct_answers = 0
+        self.total_questions = 0
+        for word in self.words:
+            word.result = 0
         self.new_word()
 
     def new_word(self):
@@ -43,6 +52,7 @@ class LearningMode(QDialog):
             self.correct_answer = word.term
 
         self.answer_input.clear()
+        self.total_questions += 1
 
     def check_answer(self):
         user_answer = self.answer_input.text()
@@ -52,6 +62,7 @@ class LearningMode(QDialog):
             self.incorrect_response()
 
     def correct_response(self):
+        self.correct_answers += 1
         word = self.words[self.current_word_index]
         word.result += 1 if word.result % 4 != 0 else 4
         if word.result == 8:
@@ -64,7 +75,6 @@ class LearningMode(QDialog):
         msg_box.setWindowTitle("Incorrect Answer")
         msg_box.setText(
             f"{self.prompt_label.text()}\nCorrect answer: {self.correct_answer}\nYour answer: {self.answer_input.text()}\n"
-            f"{'' if not word.notes else 'Notes: ' + word.notes}"
         )
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Ignore)
         ret = msg_box.exec()
@@ -79,9 +89,13 @@ class LearningMode(QDialog):
             self.new_word()
 
     def end_learning(self):
+        accuracy = self.correct_answers / self.total_questions if self.total_questions > 0 else 0
         msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Congratulations!")
-        msg_box.setText("You have completed the learning session!")
+        msg_box.setWindowTitle("Session Statistics")
+        msg_box.setText(
+            f"Session Statistics:\nCorrect Answers: {self.correct_answers}\nTotal Questions: {self.total_questions}\nAccuracy: {accuracy:.2%}"
+        )
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg_box.exec()
         self.accept()
+
