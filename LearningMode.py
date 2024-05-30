@@ -2,14 +2,14 @@ import random
 
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 
-from WordList import WordList
+from Word import Word
 
 
 class LearningMode(QDialog):
-    def __init__(self, word_list: WordList):
+    def __init__(self, words: list[Word]):
         super().__init__()
         self.setWindowTitle("Learning Mode")
-        self.word_list = word_list.words.copy()
+        self.words = words.copy()
         self.current_word_index = -1
         self.correct_answer = ""
 
@@ -29,12 +29,12 @@ class LearningMode(QDialog):
         self.new_word()
 
     def new_word(self):
-        if not self.word_list:
+        if not self.words:
             self.end_learning()
             return
 
-        self.current_word_index = random.randint(0, len(self.word_list) - 1)
-        word = self.word_list[self.current_word_index]
+        self.current_word_index = random.randint(0, len(self.words) - 1)
+        word = self.words[self.current_word_index]
         if word.result < 4:
             self.prompt_label.setText(f"Define: {word.term}")
             self.correct_answer = word.definition
@@ -52,14 +52,14 @@ class LearningMode(QDialog):
             self.incorrect_response()
 
     def correct_response(self):
-        word = self.word_list[self.current_word_index]
+        word = self.words[self.current_word_index]
         word.result += 1 if word.result % 4 != 0 else 4
-        if word.result % 8 == 0: # zamienić na == 8
-            self.word_list.pop(self.current_word_index)
+        if word.result == 8:
+            self.words.pop(self.current_word_index)
         self.new_word()
 
     def incorrect_response(self):
-        word = self.word_list[self.current_word_index]
+        word = self.words[self.current_word_index]
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle("Incorrect Answer")
         msg_box.setText(

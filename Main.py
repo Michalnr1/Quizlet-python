@@ -107,14 +107,11 @@ class WordListEditor(QDialog):
             self.tree.addTopLevelItem(item)
             checkbox = QCheckBox()
             checkbox.setChecked(word.selected)
-            checkbox.stateChanged.connect(self.create_update_selection_callback(word))
+            checkbox.stateChanged.connect(lambda state, w=word: self.update_word_selection(w, state))
             self.tree.setItemWidget(item, 0, checkbox)
 
-    def create_update_selection_callback(self, word):
-        return lambda state: self.update_word_selection(word, state)
-
     def update_word_selection(self, word, state):
-        word.selected = state == Qt.CheckState.Checked
+        word.selected = state == 2 #Qt.CheckState.Checked
 
     def add_word(self):
         new_word = Word("new", "newly added word")
@@ -122,7 +119,7 @@ class WordListEditor(QDialog):
         item = QTreeWidgetItem(["", new_word.term, new_word.definition, new_word.notes])
         checkbox = QCheckBox()
         checkbox.setChecked(new_word.selected)
-        checkbox.stateChanged.connect(self.create_update_selection_callback(new_word))
+        checkbox.stateChanged.connect(lambda state, w=new_word: self.update_word_selection(w, state))
         self.tree.addTopLevelItem(item)
         self.tree.setItemWidget(item, 0, checkbox)
 
@@ -142,9 +139,38 @@ class WordListEditor(QDialog):
             selected_item.setText(3, selected_word.notes)
 
     def start_learning_mode(self):
-        dialog = LearningMode(self.word_list)
+        selected_words = [word for word in self.word_list.words if word.selected]
+        if not selected_words:
+            selected_words = self.word_list.words
+        dialog = LearningMode(selected_words)
         dialog.exec()
 
+
+class AddWordListDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add New Word List")
+
+        self.layout = QVBoxLayout()
+
+        self.title_label = QLabel("Title:")
+        self.layout.addWidget(self.title_label)
+
+        self.title_edit = QLineEdit()
+        self.layout.addWidget(self.title_edit)
+
+        self.add_button = QPushButton("Add")
+        self.add_button.clicked.connect(self.add_word_list)
+        self.layout.addWidget(self.add_button)
+
+        self.setLayout(self.layout)
+
+    def add_word_list(self):
+        self.title = self.title_edit.text()
+        if self.title:
+            self.accept()
+        else:
+            self.reject()
 
 class Quizlet(QMainWindow):
     def __init__(self):
@@ -181,6 +207,10 @@ class Quizlet(QMainWindow):
 
         self.populate_tree()
 
+        self.add_list_button = QPushButton("Add Word List")
+        self.add_list_button.clicked.connect(self.add_word_list)
+        layout.addWidget(self.add_list_button)
+
         self.edit_list_button = QPushButton("Edit List Title")
         self.edit_list_button.clicked.connect(self.edit_list_title)
         layout.addWidget(self.edit_list_button)
@@ -196,6 +226,13 @@ class Quizlet(QMainWindow):
         for word_list in self.word_lists:
             item = QTreeWidgetItem([word_list.title])
             self.tree.addTopLevelItem(item)
+
+    def add_word_list(self):
+        dialog = AddWordListDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            new_word_list = WordList(dialog.title, [])
+            self.word_lists.append(new_word_list)
+            self.populate_tree()
 
     def edit_list_title(self):
         selected_item = self.tree.currentItem()
