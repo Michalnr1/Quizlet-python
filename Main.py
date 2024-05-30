@@ -3,6 +3,8 @@ import sys
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QTreeWidget, QTreeWidgetItem, \
     QPushButton, QDialog, QLineEdit, QCheckBox
+
+from LearningMode import LearningMode
 from Word import Word
 from WordList import WordList
 
@@ -92,20 +94,21 @@ class WordListEditor(QDialog):
         self.edit_word_button.clicked.connect(self.edit_selected_word)
         self.layout.addWidget(self.edit_word_button)
 
+        self.start_learning_button = QPushButton("Start Learning Mode")
+        self.start_learning_button.clicked.connect(self.start_learning_mode)
+        self.layout.addWidget(self.start_learning_button)
+
         self.setLayout(self.layout)
 
     def populate_tree(self):
         self.tree.clear()
         for word in self.word_list.words:
-            item = QTreeWidgetItem([word.term, word.definition, word.notes])
+            item = QTreeWidgetItem(["", word.term, word.definition, word.notes])
             self.tree.addTopLevelItem(item)
             checkbox = QCheckBox()
             checkbox.setChecked(word.selected)
             checkbox.stateChanged.connect(self.create_update_selection_callback(word))
             self.tree.setItemWidget(item, 0, checkbox)
-            item.setText(1, word.term)
-            item.setText(2, word.definition)
-            item.setText(3, word.notes)
 
     def create_update_selection_callback(self, word):
         return lambda state: self.update_word_selection(word, state)
@@ -122,9 +125,6 @@ class WordListEditor(QDialog):
         checkbox.stateChanged.connect(self.create_update_selection_callback(new_word))
         self.tree.addTopLevelItem(item)
         self.tree.setItemWidget(item, 0, checkbox)
-        item.setText(1, new_word.term)
-        item.setText(2, new_word.definition)
-        item.setText(3, new_word.notes)
 
     def edit_selected_word(self):
         selected_items = self.tree.selectedItems()
@@ -140,6 +140,10 @@ class WordListEditor(QDialog):
             selected_item.setText(1, selected_word.term)
             selected_item.setText(2, selected_word.definition)
             selected_item.setText(3, selected_word.notes)
+
+    def start_learning_mode(self):
+        dialog = LearningMode(self.word_list)
+        dialog.exec()
 
 
 class Quizlet(QMainWindow):
