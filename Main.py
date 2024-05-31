@@ -73,6 +73,57 @@ class EditWordDialog(QDialog):
         self.accept()
 
 
+class AddWordDialog(QDialog):
+    def __init__(self, word_list: WordList, db: Database):
+        super().__init__()
+        self.setWindowTitle("Add Word")
+        self.word_list = word_list
+        self.db = db
+        self.current_word = Word("new", "newly added word")
+
+        self.layout = QVBoxLayout()
+
+        self.term_edit = QLineEdit()
+        self.definition_edit = QLineEdit()
+        self.notes_edit = QLineEdit()
+
+        self.layout.addWidget(QLabel("Term"))
+        self.layout.addWidget(self.term_edit)
+        self.layout.addWidget(QLabel("Definition"))
+        self.layout.addWidget(self.definition_edit)
+        self.layout.addWidget(QLabel("Notes"))
+        self.layout.addWidget(self.notes_edit)
+
+        self.next_button = QPushButton("Next")
+        self.next_button.clicked.connect(self.next)
+        self.layout.addWidget(self.next_button)
+
+        self.save_button = QPushButton("Save")
+        self.layout.addWidget(self.save_button)
+        self.save_button.clicked.connect(self.save)
+
+        self.setLayout(self.layout)
+
+    def save(self):
+        self.current_word.term = self.term_edit.text()
+        self.current_word.definition = self.definition_edit.text()
+        self.current_word.notes = self.notes_edit.text()
+        self.current_word.id = self.db.add_word(self.word_list.id, self.current_word.selected, self.current_word.term, self.current_word.definition, self.current_word.notes)
+        self.word_list.words.append(self.current_word)
+        self.accept()
+
+    def next(self):
+        self.current_word.term = self.term_edit.text()
+        self.current_word.definition = self.definition_edit.text()
+        self.current_word.notes = self.notes_edit.text()
+        self.current_word.id = self.db.add_word(self.word_list.id, self.current_word.selected, self.current_word.term, self.current_word.definition, self.current_word.notes)
+        self.word_list.words.append(self.current_word)
+        self.term_edit.clear()
+        self.definition_edit.clear()
+        self.notes_edit.clear()
+        self.current_word = Word("new", "newly added word")
+
+
 class WordListEditor(QDialog):
     def __init__(self, word_list: WordList, db: Database):
         super().__init__()
@@ -121,16 +172,9 @@ class WordListEditor(QDialog):
         self.db.update_word(word.id, word.term, word.definition, word.selected, word.notes)
 
     def add_word(self):
-        new_word = Word("new", "newly added word")
-        new_word.id = self.db.add_word(self.word_list.id, new_word.selected, new_word.term, new_word.definition, new_word.notes)
-        self.word_list.words.append(new_word)
-        item = QTreeWidgetItem(["", new_word.term, new_word.definition, new_word.notes])
-        checkbox = QCheckBox()
-        checkbox.setChecked(new_word.selected)
-        checkbox.stateChanged.connect(lambda state, w=new_word: self.update_word_selection(w, state))
-        self.tree.addTopLevelItem(item)
-        self.tree.setItemWidget(item, 0, checkbox)
-        print(f"Added word: {new_word.term}, ID: {new_word.id}")  # Debug print
+        dialog = AddWordDialog(self.word_list, self.db)
+        dialog.exec()
+        self.populate_tree()
 
     def edit_selected_word(self):
         selected_items = self.tree.selectedItems()
