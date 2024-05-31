@@ -7,13 +7,14 @@ class WordList:
     Represents a list of words with a title.
     """
 
-    def __init__(self, title: str, words: List[Word]) -> None:
+    def __init__(self, title: str, words: List[Word], id = None) -> None:
         """
         Initializes a new instance of the WordList class.
 
         :param title: The title of the word list.
         :param words: A list of Word objects.
         """
+        self.id = id
         self._title = title
         self._words = words
 

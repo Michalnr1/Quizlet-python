@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QTreeWidget, QTreeWidgetItem, \
     QPushButton, QDialog, QLineEdit, QCheckBox
 
+from Database import Database
 from LearningMode import LearningMode
 from Word import Word
 from WordList import WordList
@@ -65,18 +66,19 @@ class EditWordDialog(QDialog):
         self.word.notes = self.notes_edit.text()
 
         # Update tree item
-        self.tree_item.setText(0, self.word.term)
-        self.tree_item.setText(1, self.word.definition)
+        self.tree_item.setText(1, self.word.term)
+        self.tree_item.setText(2, self.word.definition)
         self.tree_item.setText(3, self.word.notes)
 
         self.accept()
 
 
 class WordListEditor(QDialog):
-    def __init__(self, word_list: WordList):
+    def __init__(self, word_list: WordList, db: Database):
         super().__init__()
         self.setWindowTitle(word_list.title)
         self.word_list = word_list
+        self.db = db
 
         self.layout = QVBoxLayout()
 
@@ -115,10 +117,12 @@ class WordListEditor(QDialog):
             self.tree.setItemWidget(item, 0, checkbox)
 
     def update_word_selection(self, word, state):
-        word.selected = state == 2 #Qt.CheckState.Checked
+        word.selected = state == Qt.CheckState.Checked
+        self.db.update_word(word.id, word.term, word.definition, word.selected, word.notes)
 
     def add_word(self):
         new_word = Word("new", "newly added word")
+        new_word.id = self.db.add_word(self.word_list.id, new_word.selected, new_word.term, new_word.definition, new_word.notes)
         self.word_list.words.append(new_word)
         item = QTreeWidgetItem(["", new_word.term, new_word.definition, new_word.notes])
         checkbox = QCheckBox()
@@ -126,6 +130,7 @@ class WordListEditor(QDialog):
         checkbox.stateChanged.connect(lambda state, w=new_word: self.update_word_selection(w, state))
         self.tree.addTopLevelItem(item)
         self.tree.setItemWidget(item, 0, checkbox)
+        print(f"Added word: {new_word.term}, ID: {new_word.id}")  # Debug print
 
     def edit_selected_word(self):
         selected_items = self.tree.selectedItems()
@@ -141,11 +146,14 @@ class WordListEditor(QDialog):
             selected_item.setText(1, selected_word.term)
             selected_item.setText(2, selected_word.definition)
             selected_item.setText(3, selected_word.notes)
+            self.db.update_word(selected_word.id, selected_word.selected, selected_word.term, selected_word.definition, selected_word.notes)
 
     def delete_word(self):
         selected_item = self.tree.currentItem()
         if selected_item:
             selected_index = self.tree.indexOfTopLevelItem(selected_item)
+            selected_word = self.word_list.words[selected_index]
+            self.db.delete_word(selected_word.id)
             del self.word_list.words[selected_index]
             self.populate_tree()
 
@@ -189,16 +197,8 @@ class Quizlet(QMainWindow):
         self.setWindowTitle("Word List Application")
         self.setGeometry(100, 100, 600, 400)
 
-        self.word_lists = [
-            WordList("List 1", [
-                Word("example", "a representative form or pattern"),
-                Word("sample", "a small part or quantity intended to show what the whole is like")
-            ]),
-            WordList("List 2", [
-                Word("test", "a procedure intended to establish the quality"),
-                Word("trial", "a test of the performance, qualities, or suitability of someone or something")
-            ])
-        ]
+        self.db = Database()
+        self.word_lists = self.load_word_lists()
 
         self.initUI()
 
@@ -242,10 +242,14 @@ class Quizlet(QMainWindow):
             item = QTreeWidgetItem([word_list.title])
             self.tree.addTopLevelItem(item)
 
+    def load_word_lists(self):
+        return self.db.load_word_lists()
+
     def add_word_list(self):
         dialog = AddWordListDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             new_word_list = WordList(dialog.title, [])
+            new_word_list.id = self.db.add_word_list(new_word_list.title)
             self.word_lists.append(new_word_list)
             self.populate_tree()
 
@@ -256,12 +260,15 @@ class Quizlet(QMainWindow):
             selected_list = self.word_lists[selected_index]
             dialog = EditWordListDialog(selected_list, selected_item)
             if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.db.update_word_list(selected_list.id, selected_list.title)
                 self.populate_tree()
 
     def delete_list(self):
         selected_item = self.tree.currentItem()
         if selected_item:
             selected_index = self.tree.indexOfTopLevelItem(selected_item)
+            selected_list = self.word_lists[selected_index]
+            self.db.delete_word_list(selected_list.id)
             del self.word_lists[selected_index]
             self.populate_tree()
 
@@ -270,7 +277,7 @@ class Quizlet(QMainWindow):
         if selected_item:
             selected_index = self.tree.indexOfTopLevelItem(selected_item)
             selected_list = self.word_lists[selected_index]
-            dialog = WordListEditor(selected_list)
+            dialog = WordListEditor(selected_list, self.db)
             dialog.exec()
 
 

@@ -3,15 +3,16 @@ class Word:
     Represents a word with its definition, selection status, and notes.
     """
 
-    def __init__(self, term: str, definition: str, selected: bool = False, notes: str = "") -> None:
+    def __init__(self, term: str, definition: str, notes: str = "", selected: bool = False) -> None:
         """
         Initializes a new instance of the Word class.
 
         :param term: The term or word.
         :param definition: The definition of the term.
-        :param selected: The selection status of the word.
         :param notes: Additional notes about the word.
+        :param selected: The selection status of the word.
         """
+        self.id = None
         self._term = term
         self._definition = definition
         self._selected = selected
