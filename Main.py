@@ -2,7 +2,7 @@ import sys
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QTreeWidget, QTreeWidgetItem, \
-    QPushButton, QDialog, QLineEdit, QCheckBox
+    QPushButton, QDialog, QLineEdit, QCheckBox, QFileDialog
 
 from Database import Database
 from LearningMode import LearningMode
@@ -278,6 +278,14 @@ class Quizlet(QMainWindow):
         self.open_list_button.clicked.connect(self.open_list)
         layout.addWidget(self.open_list_button)
 
+        self.import_button = QPushButton("Import Word List")
+        self.import_button.clicked.connect(self.import_word_list)
+        layout.addWidget(self.import_button)
+
+        self.export_button = QPushButton("Export Word List")
+        self.export_button.clicked.connect(self.export_word_list)
+        layout.addWidget(self.export_button)
+
         central_widget.setLayout(layout)
 
     def populate_tree(self):
@@ -323,6 +331,50 @@ class Quizlet(QMainWindow):
             selected_list = self.word_lists[selected_index]
             dialog = WordListEditor(selected_list, self.db)
             dialog.exec()
+
+    def import_word_list(self):
+        file_name, _ = QFileDialog.getOpenFileName(self, "Import Word List", "", "Text Files (*.txt);;All Files (*)")
+        if file_name:
+            with open(file_name, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                words = []
+                for line in lines:
+                    parts = line.strip().split(' - ')
+                    term = parts[0]
+                    definition, notes = '', ''
+                    if len(parts) > 1:
+                        if '(' in parts[1] and parts[1].endswith(')'):
+                            definition, notes = parts[1].rsplit(' (', 1)
+                            notes = notes[:-1]
+                        else:
+                            definition = parts[1]
+                    words.append(Word(term, definition, notes))
+
+                dialog = AddWordListDialog(self)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    new_word_list = WordList(dialog.title, words)
+                    new_word_list.id = self.db.add_word_list(new_word_list.title)
+                    self.db.import_word_list(new_word_list.id, words)
+                    self.word_lists.append(new_word_list)
+                    self.populate_tree()
+
+    def export_word_list(self):
+        selected_item = self.tree.currentItem()
+        if selected_item:
+            selected_index = self.tree.indexOfTopLevelItem(selected_item)
+            selected_list = self.word_lists[selected_index]
+
+            file_name, _ = QFileDialog.getSaveFileName(self, "Export Word List", "",
+                                                       "Text Files (*.txt);;All Files (*)")
+            if file_name:
+                words = self.db.export_word_list(selected_list.id)
+                with open(file_name, 'w', encoding='utf-8') as file:
+                    for term, definition, notes in words:
+                        if notes:
+                            file.write(f"{term} - {definition} ({notes})\n")
+                        else:
+                            file.write(f"{term} - {definition}\n")
+
 
 
 if __name__ == "__main__":

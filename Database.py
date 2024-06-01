@@ -76,3 +76,12 @@ class Database:
                 word.selected = bool(row[1])
                 words.append(word)
         return words
+
+    def import_word_list(self, word_list_id, words):
+        for word in words:
+            self.add_word(word_list_id, word.selected, word.term, word.definition, word.notes)
+
+    def export_word_list(self, word_list_id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT term, definition, notes FROM words WHERE list_id=?", (word_list_id,))
+        return cursor.fetchall()
