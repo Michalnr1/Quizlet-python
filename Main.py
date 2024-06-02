@@ -1,8 +1,8 @@
 import sys
-
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QTreeWidget, QTreeWidgetItem, \
-    QPushButton, QDialog, QLineEdit, QCheckBox, QFileDialog
+    QPushButton, QDialog, QLineEdit, QCheckBox, QHBoxLayout, QFileDialog
 
 from Database import Database
 from LearningMode import LearningMode
@@ -73,79 +73,25 @@ class EditWordDialog(QDialog):
         self.accept()
 
 
-class AddWordDialog(QDialog):
-    def __init__(self, word_list: WordList, db: Database):
-        super().__init__()
-        self.setWindowTitle("Add Word")
-        self.word_list = word_list
-        self.db = db
-        self.current_word = Word("new", "newly added word")
-
-        self.layout = QVBoxLayout()
-
-        self.term_edit = QLineEdit()
-        self.definition_edit = QLineEdit()
-        self.notes_edit = QLineEdit()
-
-        self.layout.addWidget(QLabel("Term"))
-        self.layout.addWidget(self.term_edit)
-        self.layout.addWidget(QLabel("Definition"))
-        self.layout.addWidget(self.definition_edit)
-        self.layout.addWidget(QLabel("Notes"))
-        self.layout.addWidget(self.notes_edit)
-
-        self.next_button = QPushButton("Next")
-        self.next_button.clicked.connect(self.next)
-        self.layout.addWidget(self.next_button)
-
-        self.save_button = QPushButton("Save")
-        self.layout.addWidget(self.save_button)
-        self.save_button.clicked.connect(self.save)
-
-        self.setLayout(self.layout)
-
-    def save(self):
-        self.current_word.term = self.term_edit.text()
-        self.current_word.definition = self.definition_edit.text()
-        self.current_word.notes = self.notes_edit.text()
-        self.current_word.id = self.db.add_word(self.word_list.id, self.current_word.selected, self.current_word.term, self.current_word.definition, self.current_word.notes)
-        self.word_list.words.append(self.current_word)
-        self.accept()
-
-    def next(self):
-        self.current_word.term = self.term_edit.text()
-        self.current_word.definition = self.definition_edit.text()
-        self.current_word.notes = self.notes_edit.text()
-        self.current_word.id = self.db.add_word(self.word_list.id, self.current_word.selected, self.current_word.term, self.current_word.definition, self.current_word.notes)
-        self.word_list.words.append(self.current_word)
-        self.term_edit.clear()
-        self.definition_edit.clear()
-        self.notes_edit.clear()
-        self.current_word = Word("new", "newly added word")
-
-
 class WordListEditor(QDialog):
     def __init__(self, word_list: WordList, db: Database):
         super().__init__()
         self.setWindowTitle(word_list.title)
+        self.setGeometry(200, 200, 600, 400)
         self.word_list = word_list
         self.db = db
 
         self.layout = QVBoxLayout()
 
         self.tree = QTreeWidget()
-        self.tree.setColumnCount(4)
-        self.tree.setHeaderLabels(["Selected", "Term", "Definition", "Notes"])
+        self.tree.setColumnCount(5)
+        self.tree.setHeaderLabels(["Selected", "Term", "Definition", "Notes", "Edit"])
         self.populate_tree()
         self.layout.addWidget(self.tree)
 
         self.add_word_button = QPushButton("Add Word")
         self.add_word_button.clicked.connect(self.add_word)
         self.layout.addWidget(self.add_word_button)
-
-        self.edit_word_button = QPushButton("Edit Selected Word")
-        self.edit_word_button.clicked.connect(self.edit_selected_word)
-        self.layout.addWidget(self.edit_word_button)
 
         self.delete_word_button = QPushButton("Delete Word")
         self.delete_word_button.clicked.connect(self.delete_word)
@@ -156,41 +102,55 @@ class WordListEditor(QDialog):
         self.layout.addWidget(self.start_learning_button)
 
         self.setLayout(self.layout)
+        self.add_word_button.setFocus()
 
     def populate_tree(self):
         self.tree.clear()
         for word in self.word_list.words:
-            item = QTreeWidgetItem(["", word.term, word.definition, word.notes])
+            item = QTreeWidgetItem(["", word.term, word.definition, word.notes, ""])
             self.tree.addTopLevelItem(item)
             checkbox = QCheckBox()
             checkbox.setChecked(word.selected)
             checkbox.stateChanged.connect(lambda state, w=word: self.update_word_selection(w, state))
             self.tree.setItemWidget(item, 0, checkbox)
 
+            edit_button = QPushButton()
+            edit_button.setIcon(QIcon("edit_icon.png"))
+            edit_button.setFixedSize(24, 24)
+            edit_button.setIconSize(QSize(16, 16))
+            edit_button.clicked.connect(lambda _, i=item, w=word: self.edit_word(i, w))
+            self.tree.setItemWidget(item, 4, edit_button)
+        self.tree.setCurrentItem(None)
+
     def update_word_selection(self, word, state):
         word.selected = state == Qt.CheckState.Checked
         self.db.update_word(word.id, word.term, word.definition, word.selected, word.notes)
 
     def add_word(self):
-        dialog = AddWordDialog(self.word_list, self.db)
-        dialog.exec()
-        self.populate_tree()
+        new_word = Word("new", "newly added word")
+        new_word.id = self.db.add_word(self.word_list.id, new_word.selected, new_word.term, new_word.definition, new_word.notes)
+        self.word_list.words.append(new_word)
+        item = QTreeWidgetItem(["", new_word.term, new_word.definition, new_word.notes])
+        checkbox = QCheckBox()
+        checkbox.setChecked(new_word.selected)
+        checkbox.stateChanged.connect(lambda state, w=new_word: self.update_word_selection(w, state))
+        self.tree.addTopLevelItem(item)
+        self.tree.setItemWidget(item, 0, checkbox)
 
-    def edit_selected_word(self):
-        selected_items = self.tree.selectedItems()
-        if not selected_items:
-            return
+        edit_button = QPushButton()
+        edit_button.setIcon(QIcon("edit_icon.png"))
+        edit_button.setFixedSize(24, 24)
+        edit_button.setIconSize(QSize(16, 16))
+        edit_button.clicked.connect(lambda _, i=item, w=new_word: self.edit_word(i, w))
+        self.tree.setItemWidget(item, 4, edit_button)
 
-        selected_item = selected_items[0]
-        selected_index = self.tree.indexOfTopLevelItem(selected_item)
-        selected_word = self.word_list.words[selected_index]
-
-        dialog = EditWordDialog(selected_word, selected_item)
+    def edit_word(self, item, word):
+        dialog = EditWordDialog(word, item)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            selected_item.setText(1, selected_word.term)
-            selected_item.setText(2, selected_word.definition)
-            selected_item.setText(3, selected_word.notes)
-            self.db.update_word(selected_word.id, selected_word.selected, selected_word.term, selected_word.definition, selected_word.notes)
+            item.setText(1, word.term)
+            item.setText(2, word.definition)
+            item.setText(3, word.notes)
+            self.db.update_word(word.id, word.selected, word.term, word.definition, word.notes)
 
     def delete_word(self):
         selected_item = self.tree.currentItem()
@@ -235,11 +195,12 @@ class AddWordListDialog(QDialog):
         else:
             self.reject()
 
+
 class Quizlet(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Word List Application")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 300, 400)
 
         self.db = Database()
         self.word_lists = self.load_word_lists()
@@ -256,8 +217,10 @@ class Quizlet(QMainWindow):
         layout.addWidget(self.title_label)
 
         self.tree = QTreeWidget()
-        self.tree.setColumnCount(1)
-        self.tree.setHeaderLabels(["Title"])
+        self.tree.setColumnCount(2)
+        self.tree.setColumnWidth(0, 200)
+        self.tree.setColumnWidth(1, 30)
+        self.tree.setHeaderLabels(["Title", "Edit"])
         layout.addWidget(self.tree)
 
         self.populate_tree()
@@ -266,17 +229,9 @@ class Quizlet(QMainWindow):
         self.add_list_button.clicked.connect(self.add_word_list)
         layout.addWidget(self.add_list_button)
 
-        self.edit_list_button = QPushButton("Edit List Title")
-        self.edit_list_button.clicked.connect(self.edit_list_title)
-        layout.addWidget(self.edit_list_button)
-
         self.delete_list_button = QPushButton("Delete List")
         self.delete_list_button.clicked.connect(self.delete_list)
         layout.addWidget(self.delete_list_button)
-
-        self.open_list_button = QPushButton("Open List")
-        self.open_list_button.clicked.connect(self.open_list)
-        layout.addWidget(self.open_list_button)
 
         self.import_button = QPushButton("Import Word List")
         self.import_button.clicked.connect(self.import_word_list)
@@ -286,13 +241,23 @@ class Quizlet(QMainWindow):
         self.export_button.clicked.connect(self.export_word_list)
         layout.addWidget(self.export_button)
 
+        # Connect the double-click signal to the open_list method
+        self.tree.itemDoubleClicked.connect(self.open_list)
+
         central_widget.setLayout(layout)
 
     def populate_tree(self):
         self.tree.clear()
         for word_list in self.word_lists:
-            item = QTreeWidgetItem([word_list.title])
+            item = QTreeWidgetItem([word_list.title, ""])
             self.tree.addTopLevelItem(item)
+
+            edit_button = QPushButton()
+            edit_button.setIcon(QIcon("edit_icon.png"))
+            edit_button.setFixedSize(24, 24)
+            edit_button.setIconSize(QSize(16, 16))
+            edit_button.clicked.connect(lambda _, i=item, wl=word_list: self.edit_list(i, wl))
+            self.tree.setItemWidget(item, 1, edit_button)
 
     def load_word_lists(self):
         return self.db.load_word_lists()
@@ -305,15 +270,11 @@ class Quizlet(QMainWindow):
             self.word_lists.append(new_word_list)
             self.populate_tree()
 
-    def edit_list_title(self):
-        selected_item = self.tree.currentItem()
-        if selected_item:
-            selected_index = self.tree.indexOfTopLevelItem(selected_item)
-            selected_list = self.word_lists[selected_index]
-            dialog = EditWordListDialog(selected_list, selected_item)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                self.db.update_word_list(selected_list.id, selected_list.title)
-                self.populate_tree()
+    def edit_list(self, item, word_list):
+        dialog = EditWordListDialog(word_list, item)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.db.update_word_list(word_list.id, word_list.title)
+            self.populate_tree()
 
     def delete_list(self):
         selected_item = self.tree.currentItem()
@@ -324,13 +285,11 @@ class Quizlet(QMainWindow):
             del self.word_lists[selected_index]
             self.populate_tree()
 
-    def open_list(self):
-        selected_item = self.tree.currentItem()
-        if selected_item:
-            selected_index = self.tree.indexOfTopLevelItem(selected_item)
-            selected_list = self.word_lists[selected_index]
-            dialog = WordListEditor(selected_list, self.db)
-            dialog.exec()
+    def open_list(self, item):
+        selected_index = self.tree.indexOfTopLevelItem(item)
+        selected_list = self.word_lists[selected_index]
+        dialog = WordListEditor(selected_list, self.db)
+        dialog.exec()
 
     def import_word_list(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Import Word List", "", "Text Files (*.txt);;All Files (*)")
@@ -364,8 +323,7 @@ class Quizlet(QMainWindow):
             selected_index = self.tree.indexOfTopLevelItem(selected_item)
             selected_list = self.word_lists[selected_index]
 
-            file_name, _ = QFileDialog.getSaveFileName(self, "Export Word List", "",
-                                                       "Text Files (*.txt);;All Files (*)")
+            file_name, _ = QFileDialog.getSaveFileName(self, "Export Word List", "", "Text Files (*.txt);;All Files (*)")
             if file_name:
                 words = self.db.export_word_list(selected_list.id)
                 with open(file_name, 'w', encoding='utf-8') as file:
@@ -374,7 +332,6 @@ class Quizlet(QMainWindow):
                             file.write(f"{term} - {definition} ({notes})\n")
                         else:
                             file.write(f"{term} - {definition}\n")
-
 
 
 if __name__ == "__main__":
