@@ -8,6 +8,7 @@ from Database import Database
 from LearningMode import LearningMode
 from Word import Word
 from WordList import WordList
+from Style import setColours
 
 
 class EditWordListDialog(QDialog):
@@ -27,6 +28,8 @@ class EditWordListDialog(QDialog):
         self.layout.addWidget(self.save_button)
 
         self.setLayout(self.layout)
+
+        setColours(self)
 
     def save(self):
         self.word_list.title = self.title_edit.text()
@@ -60,17 +63,71 @@ class EditWordDialog(QDialog):
 
         self.setLayout(self.layout)
 
+        setColours(self)
+
     def save(self):
         self.word.term = self.term_edit.text()
         self.word.definition = self.definition_edit.text()
         self.word.notes = self.notes_edit.text()
 
-        # Update tree item
         self.tree_item.setText(1, self.word.term)
         self.tree_item.setText(2, self.word.definition)
         self.tree_item.setText(3, self.word.notes)
 
         self.accept()
+
+class AddWordDialog(QDialog):
+    def __init__(self, word_list: WordList, db: Database):
+        super().__init__()
+        self.setWindowTitle("Add Word")
+        self.word_list = word_list
+        self.db = db
+        self.current_word = Word("new", "newly added word")
+
+        self.layout = QVBoxLayout()
+
+        self.term_edit = QLineEdit()
+        self.definition_edit = QLineEdit()
+        self.notes_edit = QLineEdit()
+
+        self.layout.addWidget(QLabel("Term"))
+        self.layout.addWidget(self.term_edit)
+        self.layout.addWidget(QLabel("Definition"))
+        self.layout.addWidget(self.definition_edit)
+        self.layout.addWidget(QLabel("Notes"))
+        self.layout.addWidget(self.notes_edit)
+
+        self.next_button = QPushButton("Next")
+        self.next_button.clicked.connect(self.next)
+        self.layout.addWidget(self.next_button)
+
+        self.save_button = QPushButton("Save")
+        self.layout.addWidget(self.save_button)
+        self.save_button.clicked.connect(self.save)
+
+        self.setLayout(self.layout)
+
+        setColours(self)
+
+    def save(self):
+        self.current_word.term = self.term_edit.text()
+        self.current_word.definition = self.definition_edit.text()
+        self.current_word.notes = self.notes_edit.text()
+        self.current_word.id = self.db.add_word(self.word_list.id, self.current_word.selected, self.current_word.term, self.current_word.definition, self.current_word.notes)
+        self.word_list.words.append(self.current_word)
+        self.accept()
+
+    def next(self):
+        self.current_word.term = self.term_edit.text()
+        self.current_word.definition = self.definition_edit.text()
+        self.current_word.notes = self.notes_edit.text()
+        self.current_word.id = self.db.add_word(self.word_list.id, self.current_word.selected, self.current_word.term, self.current_word.definition, self.current_word.notes)
+        self.word_list.words.append(self.current_word)
+        self.term_edit.clear()
+        self.definition_edit.clear()
+        self.notes_edit.clear()
+        self.term_edit.setFocus()
+        self.current_word = Word("new", "newly added word")
 
 
 class WordListEditor(QDialog):
@@ -104,6 +161,8 @@ class WordListEditor(QDialog):
         self.setLayout(self.layout)
         self.add_word_button.setFocus()
 
+        setColours(self)
+
     def populate_tree(self):
         self.tree.clear()
         for word in self.word_list.words:
@@ -115,6 +174,7 @@ class WordListEditor(QDialog):
             self.tree.setItemWidget(item, 0, checkbox)
 
             edit_button = QPushButton()
+            edit_button.setObjectName("editButton")
             edit_button.setIcon(QIcon("edit_icon.png"))
             edit_button.setFixedSize(24, 24)
             edit_button.setIconSize(QSize(16, 16))
@@ -127,22 +187,9 @@ class WordListEditor(QDialog):
         self.db.update_word(word.id, word.term, word.definition, word.selected, word.notes)
 
     def add_word(self):
-        new_word = Word("new", "newly added word")
-        new_word.id = self.db.add_word(self.word_list.id, new_word.selected, new_word.term, new_word.definition, new_word.notes)
-        self.word_list.words.append(new_word)
-        item = QTreeWidgetItem(["", new_word.term, new_word.definition, new_word.notes])
-        checkbox = QCheckBox()
-        checkbox.setChecked(new_word.selected)
-        checkbox.stateChanged.connect(lambda state, w=new_word: self.update_word_selection(w, state))
-        self.tree.addTopLevelItem(item)
-        self.tree.setItemWidget(item, 0, checkbox)
-
-        edit_button = QPushButton()
-        edit_button.setIcon(QIcon("edit_icon.png"))
-        edit_button.setFixedSize(24, 24)
-        edit_button.setIconSize(QSize(16, 16))
-        edit_button.clicked.connect(lambda _, i=item, w=new_word: self.edit_word(i, w))
-        self.tree.setItemWidget(item, 4, edit_button)
+        dialog = AddWordDialog(self.word_list, self.db)
+        dialog.exec()
+        self.populate_tree()
 
     def edit_word(self, item, word):
         dialog = EditWordDialog(word, item)
@@ -187,6 +234,8 @@ class AddWordListDialog(QDialog):
         self.layout.addWidget(self.add_button)
 
         self.setLayout(self.layout)
+
+        setColours(self)
 
     def add_word_list(self):
         self.title = self.title_edit.text()
@@ -241,10 +290,11 @@ class Quizlet(QMainWindow):
         self.export_button.clicked.connect(self.export_word_list)
         layout.addWidget(self.export_button)
 
-        # Connect the double-click signal to the open_list method
         self.tree.itemDoubleClicked.connect(self.open_list)
 
         central_widget.setLayout(layout)
+
+        setColours(self)
 
     def populate_tree(self):
         self.tree.clear()
@@ -253,6 +303,7 @@ class Quizlet(QMainWindow):
             self.tree.addTopLevelItem(item)
 
             edit_button = QPushButton()
+            edit_button.setObjectName("editButton")
             edit_button.setIcon(QIcon("edit_icon.png"))
             edit_button.setFixedSize(24, 24)
             edit_button.setIconSize(QSize(16, 16))

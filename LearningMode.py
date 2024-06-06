@@ -1,9 +1,9 @@
 import random
 
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar
 
 from Word import Word
-
+from Style import setColours
 
 class LearningMode(QDialog):
     def __init__(self, words: list[Word]):
@@ -27,14 +27,33 @@ class LearningMode(QDialog):
         self.check_button.clicked.connect(self.check_answer)
         self.layout.addWidget(self.check_button)
 
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet("""
+                    QProgressBar {
+                        border: 2px solid grey;
+                        border-radius: 5px;
+                        text-align: center;
+                        font-size: 12pt;
+                    }
+                    QProgressBar::chunk {
+                        background-color: #05B8CC;
+                        width: 20px;
+                    }
+                """)
+        self.layout.addWidget(self.progress_bar)
+
         self.setLayout(self.layout)
         self.new_session()
+
+        setColours(self)
 
     def new_session(self):
         self.correct_answers = 0
         self.total_questions = 0
         for word in self.words:
             word.result = 0
+        self.progress_bar.setMaximum(len(self.words))
+        self.progress_bar.setValue(0)
         self.new_word()
 
     def new_word(self):
@@ -67,6 +86,7 @@ class LearningMode(QDialog):
         word.result += 1 if word.result % 4 != 0 else 4
         if word.result == 8:
             self.words.pop(self.current_word_index)
+            self.update_progress()
         self.new_word()
 
     def incorrect_response(self):
@@ -87,6 +107,9 @@ class LearningMode(QDialog):
             elif word.result % 4 != 1:
                 word.result -= 1
             self.new_word()
+
+    def update_progress(self):
+        self.progress_bar.setValue(self.progress_bar.value() + 1)
 
     def end_learning(self):
         accuracy = self.correct_answers / self.total_questions if self.total_questions > 0 else 0
