@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QTreeWidget, QTreeWidgetItem, \
-    QPushButton, QDialog, QLineEdit, QCheckBox, QHBoxLayout, QFileDialog
+    QPushButton, QDialog, QLineEdit, QCheckBox, QHBoxLayout, QFileDialog, QSpacerItem, QSizePolicy
 
 from Database import Database
 from LearningMode import LearningMode
@@ -183,8 +183,11 @@ class WordListEditor(QDialog):
         self.tree.setCurrentItem(None)
 
     def update_word_selection(self, word, state):
-        word.selected = state == Qt.CheckState.Checked
-        self.db.update_word(word.id, word.term, word.definition, word.selected, word.notes)
+        if not word.selected:
+            word.selected = True
+        else:
+            word.selected = False
+        self.db.update_word(word.id, word.selected, word.term, word.definition, word.notes)
 
     def add_word(self):
         dialog = AddWordDialog(self.word_list, self.db)
@@ -248,7 +251,7 @@ class AddWordListDialog(QDialog):
 class Quizlet(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Word List Application")
+        self.setWindowTitle("Study Buddy")
         self.setGeometry(100, 100, 300, 400)
 
         self.db = Database()
@@ -282,9 +285,20 @@ class Quizlet(QMainWindow):
         self.delete_list_button.clicked.connect(self.delete_list)
         layout.addWidget(self.delete_list_button)
 
+        import_layout = QHBoxLayout()
+
+
         self.import_button = QPushButton("Import Word List")
         self.import_button.clicked.connect(self.import_word_list)
-        layout.addWidget(self.import_button)
+        self.import_button.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding))
+        import_layout.addWidget(self.import_button)
+
+        self.import_info_label = QLabel()
+        self.import_info_label.setPixmap(QPixmap("info.png").scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio))
+        self.import_info_label.setToolTip("The file should be formatted as follows:\nTerm - Definition (Optional Notes)")
+        import_layout.addWidget(self.import_info_label)
+
+        layout.addLayout(import_layout)
 
         self.export_button = QPushButton("Export Word List")
         self.export_button.clicked.connect(self.export_word_list)

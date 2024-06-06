@@ -1,4 +1,8 @@
+from PyQt6.QtGui import QIcon
+
+
 def setColours(object):
+    object.setWindowIcon(QIcon("icon.png"))
     object.setStyleSheet("""
                                 QWidget {
                                     font-size: 14px;
